@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NutriSnap - Prototaip</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">NutriSnap</div>
+      <div id="userIcon" class="user-icon" title="Profil">A</div>
+    </header>
+
+    <main class="screens">
+      <section id="home" class="screen active">
+        <div class="home-card">
+          <h1>Track Nutrisi Mudah</h1>
+          <p>Analisis gambar makanan untuk pengiraan kalori dan nutrisi.</p>
+          <button class="primary" data-nav="upload">Buka Kamera / Upload</button>
+          <div style="height:12px"></div>
+          <div class="home-stats">
+            <div class="stat-card">
+              <div class="stat-icon">✅</div>
+              <div class="stat-text">Log Terkini Berjaya Dicipta</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">⚖️</div>
+              <div class="stat-text">Pantau Berat Badan</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="upload" class="screen">
+        <h2>Upload Gambar</h2>
+        <div class="upload-card">
+          <div class="upload-drop" id="dropZone">
+            <input id="fileInput" type="file" accept="image/*" />
+            <div class="camera-icon">📷</div>
+            <div class="upload-text">Tambah Gambar (maks 5MB)</div>
+          </div>
+          <button class="primary" id="analyzeBtn">Hantar</button>
+          <div id="uploadHint" class="hint">Format: JPG/PNG. Saiz maksimum 5MB.</div>
+        </div>
+      </section>
+
+      <section id="analysis" class="screen">
+        <h2>Hasil Analisis Gambar</h2>
+        <div class="result-card" id="resultCard">
+          <div class="food-image" id="resultImg">—</div>
+          <div class="result-list">
+            <div class="result-row"><span>Kalori</span><span id="rCalories">-</span></div>
+            <div class="result-row"><span>Karbohidrat</span><span id="rCarb">-</span></div>
+            <div class="result-row"><span>Protein</span><span id="rProtein">-</span></div>
+            <div class="result-row"><span>Lemak</span><span id="rFat">-</span></div>
+          </div>
+        </div>
+
+        <div id="suggestionPopup" class="popup hidden">
+          <div class="popup-content">
+            <div class="popup-title">Amaran: Makanan Tidak Sihat</div>
+            <div class="popup-text" id="popupSuggestion"></div>
+            <div class="popup-actions">
+              <button id="ignoreBtn">Abaikan</button>
+              <button id="applySuggestion" class="primary">Tunjuk Alternatif</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section id="meals" class="screen">
+        <h2>Sejarah Makanan</h2>
+        <div class="meals-card">
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="calories">Kalori</button>
+            <button class="tab-btn" data-tab="carbs">Karbohidrat</button>
+            <button class="tab-btn" data-tab="protein">Protein</button>
+          </div>
+
+          <div id="mealsContainer"></div>
+        </div>
+      </section>
+
+      <section id="user" class="screen">
+        <h2>Profil Pengguna</h2>
+        <div class="profile-card">
+          <div class="avatar">A</div>
+          <div class="profile-info">
+            <div class="pname" id="profileName">Ahmad</div>
+            <div class="pmeta" id="profileEmail">ahmad@email.com</div>
+          </div>
+        </div>
+
+        <div class="weight-summary">
+          <div class="wbox">
+            <div class="wlabel">Berat Mula</div>
+            <div class="wvalue" id="startWeight">- kg</div>
+          </div>
+          <div class="wbox">
+            <div class="wlabel">Berat Semasa</div>
+            <div class="wvalue" id="currentWeight">- kg</div>
+          </div>
+          <div class="wbox">
+            <div class="wlabel">Berat Matlamat</div>
+            <div class="wvalue" id="goalWeight">- kg</div>
+          </div>
+        </div>
+        <button class="primary" data-nav="weight">Urus Berat</button>
+      </section>
+
+      <section id="weight" class="screen">
+        <h2>Berat Badan</h2> 
+        
+        <div class="weight-summary-header"> 
+            <div class="header-current">
+                <div class="wlabel">Berat Semasa</div>
+                <div class="wvalue-large" id="currentWeightLarge">- kg</div>
+            </div>
+            <div class="header-meta-row">
+                <div class="wbox-meta">
+                    <div class="wlabel">Mula</div>
+                    <div class="wvalue" id="startWeightShort">- kg</div>
+                </div>
+                <div class="wbox-meta">
+                    <div class="wlabel">Matlamat</div>
+                    <div class="wvalue" id="goalWeightShort">- kg</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="weight-summary-calcs">
+            <span id="lostSoFarNew">Telah Hilang : - kg</span>
+            <span id="toGoNew">Baki Matlamat : - kg</span>
+        </div>
+
+        <button class="primary" data-nav="weight-entry" style="width:100%; margin-top: 15px;">Kemaskini Berat</button>
+
+        <div style="height:20px"></div>
+        <h3>Sejarah Berat</h3>
+        <div id="weightHistory" class="history-list"></div>
+      </section>
+
+      <section id="weight-entry" class="screen">
+          <h2>Urus Berat Badan</h2>
+          <div class="weight-card">
+              <label>Berat Mula (kg)</label>
+              <input id="inpStart" type="number" min="0" step="0.1" />
+              <label>Berat Semasa (kg)</label>
+              <input id="inpCurrent" type="number" min="0" step="0.1" />
+              <label>Berat Matlamat (kg)</label>
+              <input id="inpGoal" type="number" min="0" step="0.1" />
+              <div style="height:10px"></div>
+              <button id="saveWeight" class="primary">Simpan</button>
+          </div>
+      </section>
+
+    </main>
+
+    <nav class="bottombar">
+      <button class="nav-btn active" data-nav="home">🏠</button>
+      <button class="nav-btn" data-nav="weight">⚖️</button>
+      <button class="nav-btn" data-nav="meals">🍽️</button>
+      <button class="nav-btn" data-nav="user">👤</button>
+    </nav>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
