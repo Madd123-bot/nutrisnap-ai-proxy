@@ -5,102 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>NutriSnap - Cloud Version</title>
   
-  <!-- FIREBASE SDKs -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    // --- CONFIG FIREBASE ANDA ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyC9hya7EGpzu9Qn-bcjcwVpgy-_K7NR47A",
-      authDomain: "nutrisnap-34c6b.firebaseapp.com",
-      projectId: "nutrisnap-34c6b",
-      storageBucket: "nutrisnap-34c6b.firebasestorage.app",
-      messagingSenderId: "427310632230",
-      appId: "1:427310632230:web:78e2943728aec2987ac5e7"
-    };
-
-    let app, auth, db;
-    
-    // Initialize
-    try {
-        app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-        window.isFirebaseReady = true;
-        console.log("Firebase Connected");
-
-        // *** LISTENER UTAMA (IMPORTANT) ***
-        // This listens for login changes automatically
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                console.log("Auth State: Logged In", user.email);
-                // Call global handler
-                if(window.onLoginSuccess) window.onLoginSuccess(user);
-            } else {
-                console.log("Auth State: Logged Out");
-                if(window.onLogoutSuccess) window.onLogoutSuccess();
-            }
-        });
-
-    } catch (e) {
-        console.error("Firebase Init Error:", e);
-        window.isFirebaseReady = false;
-    }
-
-    // --- FUNGSI LOGIN ---
-    
-    window.handleGoogleLogin = async () => {
-        if (!window.isFirebaseReady) return alert("Firebase Error. Check Console.");
-        
-        try {
-            await signInWithPopup(auth, new GoogleAuthProvider());
-            // Listener above handles the redirection
-        } catch (error) {
-            console.error(error);
-            if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/popup-closed-by-user') {
-                // If domain issue, fallback to simulation so you can work
-                alert("Domain Unauthorized (Localhost/Preview). Menggunakan Mode Simulasi.");
-                window.simulateLogin();
-            } else {
-                alert("Login Error: " + error.message);
-            }
-        }
-    };
-
-    window.handleEmailLogin = async () => {
-        const email = document.getElementById('loginEmail').value;
-        const pass = document.getElementById('loginPass').value;
-        if(!email || !pass) return alert("Isi e-mel & password");
-        try { await signInWithEmailAndPassword(auth, email, pass); }
-        catch(e) { alert("Error: " + e.message); }
-    };
-
-    window.handleEmailSignup = async () => {
-        const name = document.getElementById('signupName').value;
-        const email = document.getElementById('signupEmail').value;
-        const pass = document.getElementById('signupPass').value;
-        if(!email || !pass) return alert("Isi info");
-        try {
-            const res = await createUserWithEmailAndPassword(auth, email, pass);
-            await updateProfile(res.user, { displayName: name });
-        } catch(e) { alert("Error: " + e.message); }
-    };
-
-    window.handleLogout = async () => {
-        if(window.isFirebaseReady) await signOut(auth);
-        window.location.reload();
-    };
-
-    // Exports for Main Script
-    window.getCollection = (uid, col) => window.isFirebaseReady ? collection(db, 'users', uid, col) : null;
-    window.fs = { query, orderBy, limit, onSnapshot, addDoc };
-  </script>
-
   <style>
     /* =========================================
-       STYLE.CSS (TEMA BUAH & SAYUR JELAS)
+       STYLE.CSS (Visual Improvements)
        ========================================= */
     :root {
       --bg: #f0f7ff;
@@ -113,194 +20,118 @@
       --accent-gradient: linear-gradient(135deg, #2dce89 0%, #2dcecc 100%);
       --danger: #f5365c;
       --radius: 16px; 
-      --pad: 16px;
-      --fab-size: 60px;
       font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     * { box-sizing: border-box; }
     
     html, body { 
-        height: 100%; 
-        margin: 0; 
-        background-color: var(--bg);
+        height: 100%; margin: 0; background-color: var(--bg);
         background-image: url("data:image/svg+xml,%3Csvg width='140' height='140' viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='10' y='30' font-size='24' opacity='0.2'%3E🍎%3C/text%3E%3Ctext x='60' y='40' font-size='24' opacity='0.2'%3E🥕%3C/text%3E%3Ctext x='30' y='90' font-size='24' opacity='0.2'%3E🥦%3C/text%3E%3Ctext x='90' y='80' font-size='24' opacity='0.2'%3E🍌%3C/text%3E%3Ctext x='110' y='30' font-size='24' opacity='0.2'%3E🍅%3C/text%3E%3Ctext x='10' y='120' font-size='24' opacity='0.2'%3E🌽%3C/text%3E%3C/svg%3E");
-        color: #32325d; 
-        -webkit-font-smoothing: antialiased;
+        color: #32325d; -webkit-font-smoothing: antialiased;
     }
 
     .hidden { display: none !important; }
     
-    #app {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        overflow: hidden; 
-    }
+    #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
     /* Topbar */
     .topbar {
-        height: 64px;
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 18px;
-        background: var(--primary-gradient); 
-        box-shadow: 0 4px 6px rgba(50,50,93,0.11); 
-        z-index: 100;
-        color: white;
+        height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+        padding: 0 18px; background: var(--primary-gradient); box-shadow: 0 4px 6px rgba(50,50,93,0.11); z-index: 100; color: white;
     }
-    .brand { font-weight: 800; font-size: 22px; color: white; letter-spacing: -0.5px; }
+    .brand { font-weight: 800; font-size: 22px; letter-spacing: -0.5px; }
     .user-icon {
-        width: 38px; height: 38px;
-        background: rgba(255, 255, 255, 0.2); 
-        color: white;
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 600; cursor: pointer;
-        backdrop-filter: blur(5px);
-        overflow: hidden;
+        width: 38px; height: 38px; background: rgba(255, 255, 255, 0.2); 
+        color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-weight: 600; cursor: pointer; overflow: hidden;
     }
     .user-icon img { width: 100%; height: 100%; object-fit: cover; }
 
-    /* Main Screens */
-    .screens {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-        padding-bottom: 90px;
-        position: relative;
-    }
+    /* Screens */
+    .screens { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 90px; position: relative; }
     .screen { display: none; animation: fadeIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); }
     .screen.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* UI Components */
+    /* Login Card */
     .login-card {
-        background: rgba(255, 255, 255, 0.98); 
-        padding: 30px 20px;
-        border-radius: var(--radius);
-        box-shadow: 0 10px 25px rgba(50,50,93,0.15), 0 5px 10px rgba(0,0,0,0.08);
-        text-align: center;
-        max-width: 400px;
-        margin: 40px auto;
-        border: 1px solid rgba(0,0,0,0.02);
+        background: rgba(255, 255, 255, 0.98); padding: 30px 20px; border-radius: var(--radius);
+        box-shadow: 0 10px 25px rgba(50,50,93,0.15); text-align: center; max-width: 400px; margin: 40px auto;
     }
     .login-card h1 { margin-top: 0; color: var(--primary); font-size: 26px; }
-    .login-card h2 { margin-top: 0; font-size: 22px; color: #32325d; }
     
-    input, select, textarea {
-        width: 100%; padding: 14px; margin-bottom: 15px;
-        border: 1px solid #e0e6ed; background: #fbfdff;
-        border-radius: 10px; font-size: 16px; outline: none; transition: all 0.2s;
+    /* Inputs & Buttons */
+    input, select {
+        width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #e0e6ed;
+        background: #fbfdff; border-radius: 10px; font-size: 16px; outline: none;
     }
-    input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(55, 124, 255, 0.15); background: white; }
-
-    .inp-label { display: block; text-align: left; font-size: 13px; color: var(--muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-
     button {
         width: 100%; padding: 14px; border: none; border-radius: 10px;
-        font-size: 16px; font-weight: 600; cursor: pointer;
-        transition: transform 0.1s, box-shadow 0.2s; margin-bottom: 12px;
+        font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 12px;
+        transition: transform 0.1s;
     }
     button:active { transform: scale(0.97); }
-
-    .primary { background: var(--primary-gradient); color: white; box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08); }
+    .primary { background: var(--primary-gradient); color: white; box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11); }
     .secondary { background: var(--soft); color: var(--primary); }
     .accent-btn { background: var(--accent-gradient); color: white; }
     .danger-btn { background: #fff0f3; color: var(--danger); }
     
     .divider { margin: 25px 0; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 1px; }
-    .login-hint { margin-top: 15px; font-size: 14px; color: var(--muted); }
-    .login-hint a { color: var(--primary); text-decoration: none; font-weight: 700; }
 
-    /* Stats Grid */
+    /* Stats & Lists */
     .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 25px; }
     .stat-card {
         background: var(--card); padding: 15px; border-radius: var(--radius);
-        box-shadow: 0 4px 12px rgba(50,50,93,0.1), 0 2px 5px rgba(0,0,0,0.07);
-        text-align: center; position: relative; overflow: hidden;
+        box-shadow: 0 4px 12px rgba(50,50,93,0.1); text-align: center; position: relative; overflow: hidden;
         display: flex; flex-direction: column; justify-content: center; align-items: center;
     }
-    .stat-card.full-width { grid-column: span 2; padding: 20px; background: linear-gradient(to right bottom, #ffffff, #f8fbff); }
+    .stat-card.full-width { grid-column: span 2; background: linear-gradient(to right bottom, #ffffff, #f8fbff); }
     .stat-card::after { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--primary-gradient); }
-    .stat-card.carb::after { background: #ff9f43; }
-    .stat-card.prot::after { background: #9b59b6; }
     .stat-val { font-size: 24px; font-weight: 800; color: #32325d; }
-    .stat-card.full-width .stat-val { font-size: 32px; color: var(--primary); }
     .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; }
 
-    /* Lists */
-    .history-list { margin-top: 10px; }
     .list-item {
         background: var(--card); padding: 16px; border-radius: 12px; margin-bottom: 12px;
-        display: flex; justify-content: space-between; align-items: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #f0f2f5;
+        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-    .item-date { font-size: 12px; color: var(--muted); }
     .item-val { font-weight: 700; font-size: 16px; color: #32325d; }
 
-    /* Meal Diary */
-    .meal-day h4 { margin: 24px 0 12px; color: var(--primary); font-size: 13px; font-weight: 700; background: var(--soft); display: inline-block; padding: 4px 12px; border-radius: 20px; }
-    .meal-row { display: flex; justify-content: space-between; background: var(--card); padding: 14px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+    /* Upload Box */
+    .upload-box {
+        background:#f6f9fc; height:200px; border-radius:10px; display:flex; align-items:center; justify-content:center; 
+        margin-bottom:20px; color:#cbd5e0; border:2px dashed #e2e8f0; position:relative; overflow:hidden;
+    }
+    .preview-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+    .loading-overlay {
+        position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.9);
+        display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; color: var(--primary); font-weight: 700;
+    }
+    .spinner { width: 30px; height: 30px; border: 3px solid var(--soft); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* FAB */
+    /* Nav */
     .fab-btn {
         position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-        width: var(--fab-size); height: var(--fab-size); border-radius: 50%;
-        background: var(--accent-gradient); color: white; border: none;
-        box-shadow: 0 10px 20px rgba(45, 206, 137, 0.4); 
-        display: flex; align-items: center; justify-content: center;
-        z-index: 1000; cursor: pointer; transition: transform 0.2s;
+        width: 60px; height: 60px; border-radius: 50%; background: var(--accent-gradient); color: white;
+        border: none; box-shadow: 0 10px 20px rgba(45, 206, 137, 0.4); display: flex; align-items: center; justify-content: center; z-index: 1000;
     }
-    .fab-btn:hover { transform: translateX(-50%) scale(1.1); }
-    
-    /* Nav */
     .bottombar {
-        position: fixed; bottom: 0; left: 0; right: 0; height: 70px;
-        background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0 10px; box-shadow: 0 -5px 20px rgba(0,0,0,0.04); z-index: 900;
-        border-top: 1px solid rgba(0,0,0,0.03);
+        position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: rgba(255, 255, 255, 0.98);
+        display: flex; justify-content: space-between; align-items: center; padding: 0 10px; box-shadow: 0 -5px 20px rgba(0,0,0,0.04); z-index: 900;
     }
     .nav-btn {
-        flex: 1; background: none; border: none; padding: 8px;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        color: #adb5bd; font-size: 11px; font-weight: 600; gap: 5px; cursor: pointer;
+        flex: 1; background: none; border: none; padding: 8px; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; color: #adb5bd; font-size: 11px; font-weight: 600; gap: 5px;
     }
     .nav-btn.active { color: var(--primary); }
     .nav-btn svg { width: 24px; height: 24px; fill: currentColor; }
     .nav-spacer { width: 70px; } 
-
-    /* Upload & Loading */
-    .upload-box {
-        background:#f6f9fc; height:200px; border-radius:10px; 
-        display:flex; align-items:center; justify-content:center; 
-        margin-bottom:20px; color:#cbd5e0; border:2px dashed #e2e8f0;
-        overflow: hidden; position: relative;
-    }
-    .preview-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
-    
-    .loading-overlay {
-        position: absolute; top:0; left:0; right:0; bottom:0;
-        background: rgba(255,255,255,0.9);
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        z-index: 10; color: var(--primary); font-weight: 700; font-size: 14px;
-    }
-    .spinner {
-        width: 30px; height: 30px; border: 3px solid var(--soft);
-        border-top: 3px solid var(--primary); border-radius: 50%;
-        animation: spin 1s linear infinite; margin-bottom: 10px;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
   </style>
 </head>
 <body>
 
   <div id="app">
-    <!-- Topbar -->
     <header class="topbar">
       <div class="brand">NutriSnap</div>
       <div id="userIcon" class="user-icon hidden" data-nav="profile">A</div>
@@ -313,7 +144,7 @@
       <section id="login" class="screen active">
         <div class="login-card">
           <h1>Selamat Datang</h1>
-          <p style="color:#8898aa;">Sila log masuk untuk menyimpan data.</p>
+          <p style="color:#8898aa;">Sila daftar atau log masuk untuk menyimpan data.</p>
           
           <button class="primary" onclick="window.handleGoogleLogin()">Masuk dengan Google</button>
           
@@ -331,12 +162,8 @@
       <section id="emailLogin" class="screen">
         <div class="login-card">
           <h2>Log Masuk</h2>
-          <label class="inp-label">E-mel</label>
-          <input type="email" placeholder="nama@contoh.com" id="loginEmail" />
-          
-          <label class="inp-label">Kata Laluan</label>
-          <input type="password" placeholder="********" id="loginPass" />
-          
+          <input type="email" placeholder="E-mel" id="loginEmail" />
+          <input type="password" placeholder="Kata Laluan" id="loginPass" />
           <button class="primary" onclick="window.handleEmailLogin()">Masuk</button>
           <button class="secondary" data-nav="login">Kembali</button>
         </div>
@@ -346,15 +173,9 @@
       <section id="emailSignup" class="screen">
         <div class="login-card">
           <h2>Daftar Baru</h2>
-          <label class="inp-label">Nama Penuh</label>
-          <input type="text" placeholder="Ahmad Albab" id="signupName" />
-          
-          <label class="inp-label">E-mel</label>
-          <input type="email" placeholder="nama@contoh.com" id="signupEmail" />
-          
-          <label class="inp-label">Kata Laluan</label>
-          <input type="password" placeholder="********" id="signupPass" />
-          
+          <input type="text" placeholder="Nama Penuh" id="signupName" />
+          <input type="email" placeholder="E-mel" id="signupEmail" />
+          <input type="password" placeholder="Kata Laluan" id="signupPass" />
           <button class="primary" onclick="window.handleEmailSignup()">Daftar</button>
           <button class="secondary" data-nav="login">Kembali</button>
         </div>
@@ -365,8 +186,10 @@
         <div class="login-card">
             <h2>Matlamat Anda</h2>
             <p style="margin-bottom:20px; color:var(--muted); font-size:14px;">Bantu kami peribadikan pengalaman anda.</p>
-            <label class="inp-label">Berat Semasa (kg)</label><input type="number" id="onboardStartWeight" placeholder="Contoh: 75.0" step="0.1">
-            <label class="inp-label">Berat Matlamat (kg)</label><input type="number" id="onboardGoalWeight" placeholder="Contoh: 65.0" step="0.1">
+            <label class="inp-label" style="display:block; text-align:left; margin-bottom:5px;">Berat Semasa (kg)</label>
+            <input type="number" id="onboardStartWeight" placeholder="Contoh: 75.0" step="0.1">
+            <label class="inp-label" style="display:block; text-align:left; margin-bottom:5px;">Berat Matlamat (kg)</label>
+            <input type="number" id="onboardGoalWeight" placeholder="Contoh: 65.0" step="0.1">
             <button class="primary" onclick="saveOnboarding()">Simpan & Teruskan</button>
         </div>
       </section>
@@ -387,7 +210,6 @@
       <section id="upload" class="screen">
         <div class="login-card">
           <h2>Analisis Makanan</h2>
-          
           <div class="upload-box">
              <img id="uploadPreview" class="preview-img hidden" src="" alt="Preview">
              <div id="aiLoading" class="loading-overlay hidden"><div class="spinner"></div><span>Menganalisis AI...</span></div>
@@ -395,19 +217,16 @@
                 <svg width="80" height="80" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm-6 4a6 6 0 1 1 12 0 6 6 0 0 1-12 0zM9 2l-1.83 2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2.17L15 2H9z"/></svg>
              </div>
           </div>
-          
           <p style="color:var(--muted);">Ambil gambar makanan untuk analisis AI.</p>
-          
           <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(this)">
           <input type="file" id="galleryInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
-
           <button class="primary" onclick="triggerCamera()">📸 Ambil Gambar</button>
           <button class="secondary" onclick="triggerGallery()">📁 Pilih dari Galeri</button>
           <button class="secondary" onclick="resetUpload()">Batal</button>
         </div>
       </section>
 
-      <!-- 6. ANALYSIS / MEALS -->
+      <!-- 6. ANALYSIS -->
       <section id="analysis" class="screen">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3>Diari Makanan</h3>
@@ -418,7 +237,7 @@
         <div id="mealsContainer" style="margin-top:20px;"></div>
       </section>
 
-      <!-- 7. WEIGHT TRACKER -->
+      <!-- 7. WEIGHT -->
       <section id="weight" class="screen">
         <div class="login-card" style="margin-top:0;">
             <h3>Rekod Berat Badan</h3>
@@ -458,189 +277,251 @@
     </nav>
   </div>
 
-  <script>
-    // --- 🔑 GOOGLE GEMINI API KEY (PILIHAN) ---
-    const API_KEY = ""; // Paste key di sini untuk AI sebenar
+  <!-- SINGLE SCRIPT TO RULE THEM ALL -->
+  <script type="module">
+    // 1. IMPORT FIREBASE
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // Global Vars
+    // 2. CONFIGURATION
+    const firebaseConfig = {
+      apiKey: "AIzaSyC9hya7EGpzu9Qn-bcjcwVpgy-_K7NR47A",
+      authDomain: "nutrisnap-34c6b.firebaseapp.com",
+      projectId: "nutrisnap-34c6b",
+      storageBucket: "nutrisnap-34c6b.firebasestorage.app",
+      messagingSenderId: "427310632230",
+      appId: "1:427310632230:web:78e2943728aec2987ac5e7"
+    };
+    
+    // 3. API KEYS & STATE
+    const GEMINI_API_KEY = ""; // Paste Gemini Key here if you have it
+    let app, auth, db;
     let currentUser = null;
-    let unsubscribeMeals = null;
-    let unsubscribeWeight = null;
     let mealLogs = [];
     let weightLogs = [];
-
-    // Elements
-    const navBtns = Array.from(document.querySelectorAll('.nav-btn'));
-    const screens = Array.from(document.querySelectorAll('.screen'));
-    const mainNav = document.getElementById('mainNav');
-    const userIcon = document.getElementById('userIcon');
-    const fabBtn = document.getElementById('fabBtn');
     let activeMealMetric = 'calories';
+    let unsubscribeMeals = null;
+    let unsubscribeWeight = null;
 
-    /* --- AUTH STATE LISTENER (HYBRID) --- */
-    // Helper to simulate login if domain fails
-    window.simulateLogin = function() {
-        const mockUser = {
-            uid: "user_sim_auto",
-            displayName: "Pengguna Simulasi",
-            email: "simulasi@nutrisnap.com",
-            photoURL: null
-        };
-        localStorage.setItem('currentUser', JSON.stringify(mockUser));
-        localStorage.setItem('isLoggedIn', 'true');
-        window.location.reload();
+    // 4. INITIALIZE FIREBASE
+    try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        console.log("🔥 Firebase Init Success");
+
+        // Auth Listener - THIS IS CRITICAL
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("✅ User Logged In:", user.email);
+                initUserSession(user);
+            } else {
+                console.log("🚫 User Logged Out");
+                // Check if we are in manual simulation mode from LocalStorage
+                const localLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+                const localUserStr = localStorage.getItem('currentUser');
+                
+                if (localLoggedIn && localUserStr) {
+                    // We are in offline mode
+                    const localUser = JSON.parse(localUserStr);
+                    if (localUser.uid.startsWith('user_sim')) {
+                        console.log("⚠️ Using Offline Session");
+                        initUserSession(localUser);
+                        return;
+                    }
+                }
+                
+                // Really logged out
+                currentUser = null;
+                showScreen('login');
+            }
+        });
+
+    } catch (e) {
+        console.error("Firebase Failed:", e);
+        // Fallback to offline check immediately if Firebase fails
+        checkOfflineSession();
+    }
+
+    function checkOfflineSession() {
+        const localLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+        if (localLoggedIn) {
+            const localUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            initUserSession(localUser);
+        } else {
+            showScreen('login');
+        }
     }
 
     function initUserSession(user) {
         currentUser = user;
         
-        // Update Profile UI
+        // Update UI
         document.getElementById('profileName').innerText = user.displayName || "Pengguna";
         document.getElementById('profileEmail').innerText = user.email;
-        if(user.photoURL) {
-            userIcon.innerHTML = `<img src="${user.photoURL}">`;
-        } else {
-            userIcon.innerHTML = user.displayName ? user.displayName.charAt(0).toUpperCase() : 'A';
-        }
+        if(user.photoURL) document.getElementById('userIcon').innerHTML = `<img src="${user.photoURL}">`;
+        else document.getElementById('userIcon').innerText = (user.displayName || "A").charAt(0).toUpperCase();
 
         // Load Data
-        loadData(user.uid);
-        
+        if (user.uid.startsWith('user_sim')) {
+            // Load Local
+            mealLogs = JSON.parse(localStorage.getItem('mealLogs') || '[]');
+            weightLogs = JSON.parse(localStorage.getItem('weightLogs') || '[]');
+            renderHomeStats();
+        } else {
+            // Load Cloud
+            subscribeToData(user.uid);
+        }
+
         // Check Onboarding
         if (!localStorage.getItem('userGoal')) showScreen('onboarding');
         else showScreen('home');
     }
 
-    /* --- DATA LOADER --- */
-    function loadData(uid) {
-        if(window.isFirebaseReady && !uid.startsWith('user_sim')) {
-            subscribeToData(uid);
-        } else {
-            // Load Local
-            mealLogs = JSON.parse(localStorage.getItem('mealLogs') || '[]');
-            weightLogs = JSON.parse(localStorage.getItem('weightLogs') || '[]');
-            renderHomeStats();
+    // 5. GLOBAL FUNCTIONS (So HTML buttons can see them)
+    window.handleGoogleLogin = async () => {
+        try {
+            await signInWithPopup(auth, new GoogleAuthProvider());
+        } catch (error) {
+            console.error(error);
+            // Auto Fallback if Domain is Blocked
+            if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/popup-closed-by-user') {
+                alert("Isu Domain: Mengaktifkan Mode Simulasi.");
+                window.simulateLogin();
+            } else {
+                alert("Login Error: " + error.message);
+            }
         }
-    }
+    };
 
-    /* --- REALTIME DATA (Firestore) --- */
-    function subscribeToData(uid) {
-        if (!window.fs) return;
-        const mealsRef = window.getCollection(uid, 'meals');
-        const qMeals = window.fs.query(mealsRef, window.fs.orderBy('date', 'desc'), window.fs.limit(50));
-        unsubscribeMeals = window.fs.onSnapshot(qMeals, (snapshot) => {
-            mealLogs = [];
-            snapshot.forEach(doc => mealLogs.push(doc.data()));
-            renderHomeStats(); 
-            if(document.getElementById('analysis').classList.contains('active')) renderMeals();
-        });
+    window.simulateLogin = () => {
+        const mockUser = { uid: "user_sim_manual", displayName: "Pengguna Simulasi", email: "offline@nutrisnap.com", photoURL: null };
+        localStorage.setItem('currentUser', JSON.stringify(mockUser));
+        localStorage.setItem('isLoggedIn', 'true');
+        window.location.reload();
+    };
 
-        const wRef = window.getCollection(uid, 'weights');
-        const qWeight = window.fs.query(wRef, window.fs.orderBy('date', 'desc'), window.fs.limit(20));
-        unsubscribeWeight = window.fs.onSnapshot(qWeight, (snapshot) => {
-            weightLogs = [];
-            snapshot.forEach(doc => weightLogs.push(doc.data()));
-            if(document.getElementById('weight').classList.contains('active')) renderWeightLogs();
-        });
-    }
-
-    function unsubscribeData() {
-        if(unsubscribeMeals) unsubscribeMeals();
-        if(unsubscribeWeight) unsubscribeWeight();
-    }
-
-    /* --- ADD DATA --- */
-    async function addMealLog(data) {
-        if(window.isFirebaseReady && currentUser && !currentUser.uid.startsWith('user_sim')) {
-            await window.fs.addDoc(window.getCollection(currentUser.uid, 'meals'), data);
-        } else {
-            mealLogs.push(data);
-            localStorage.setItem('mealLogs', JSON.stringify(mealLogs));
-            renderHomeStats();
+    window.handleEmailLogin = async () => {
+        const email = document.getElementById('loginEmail').value;
+        const pass = document.getElementById('loginPass').value;
+        if(!email || !pass) return alert("Sila isi info");
+        try { await signInWithEmailAndPassword(auth, email, pass); }
+        catch(e) { 
+            // Fallback check local
+            const users = JSON.parse(localStorage.getItem('simUsers') || '[]');
+            const u = users.find(x => x.email === email && x.pass === pass);
+            if(u) {
+                localStorage.setItem('currentUser', JSON.stringify(u));
+                localStorage.setItem('isLoggedIn', 'true');
+                window.location.reload();
+            } else {
+                alert("Gagal: " + e.message); 
+            }
         }
-    }
+    };
 
-    async function addWeightLog(data) {
-        if(window.isFirebaseReady && currentUser && !currentUser.uid.startsWith('user_sim')) {
-            await window.fs.addDoc(window.getCollection(currentUser.uid, 'weights'), data);
-        } else {
-            weightLogs.push(data);
-            localStorage.setItem('weightLogs', JSON.stringify(weightLogs));
-            renderWeightLogs();
+    window.handleEmailSignup = async () => {
+        const name = document.getElementById('signupName').value;
+        const email = document.getElementById('signupEmail').value;
+        const pass = document.getElementById('signupPass').value;
+        if(!name || !email || !pass) return alert("Sila isi info");
+        try {
+            const res = await createUserWithEmailAndPassword(auth, email, pass);
+            await updateProfile(res.user, { displayName: name });
+        } catch(e) { 
+            // Fallback save local
+            const users = JSON.parse(localStorage.getItem('simUsers') || '[]');
+            users.push({uid: "sim_"+Date.now(), displayName: name, email, pass});
+            localStorage.setItem('simUsers', JSON.stringify(users));
+            alert("Didaftarkan secara Offline (Firebase Gagal). Sila Login.");
+            showScreen('emailLogin');
         }
-    }
+    };
 
-    /* --- NAVIGATION --- */
-    function showScreen(id) {
-        // Simple auth check - if user var is set, allowed
-        const isLoggedIn = !!currentUser;
-        
-        // Screens that don't need login
-        const isAuthScreen = ['login', 'emailLogin', 'emailSignup'].includes(id);
+    window.handleLogout = async () => {
+        await signOut(auth).catch(e => console.log(e));
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('currentUser');
+        window.location.reload();
+    };
 
-        if (!isLoggedIn && !isAuthScreen) id = 'login';
-
-        const hideUiScreens = ['login', 'emailLogin', 'emailSignup', 'onboarding'];
-        const showUI = isLoggedIn && !hideUiScreens.includes(id);
-
-        if (showUI) {
-            mainNav.classList.remove('hidden');
-            userIcon.classList.remove('hidden');
-            fabBtn.classList.remove('hidden');
-        } else {
-            mainNav.classList.add('hidden');
-            userIcon.classList.add('hidden');
-            fabBtn.classList.add('hidden');
-        }
-
-        screens.forEach(s => s.classList.toggle('active', s.id === id));
-        navBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-nav') === id));
-
-        if (id === 'weight') renderWeightLogs();
-        if (id === 'analysis') renderMeals();
-        if (id === 'home') renderHomeStats();
-        if (id !== 'upload') resetUploadUI();
-    }
-
-    // Auth Listeners Handled by Module
-    window.onLoginSuccess = (user) => {
-        initUserSession(user);
-    }
-    
-    // Check LocalStorage immediately in case module takes time
-    const localLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    if(localLoggedIn) {
-        const localUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-        initUserSession(localUser);
-    } else {
-        showScreen('login');
-    }
-
-    document.body.addEventListener('click', e => {
-        const t = e.target.closest('[data-nav]');
-        if (t) {
-            e.preventDefault();
-            const targetId = t.dataset.nav;
-            if (targetId === 'logout') return; 
-            showScreen(targetId);
-        }
-    });
-
-    function resetApp() {
-        if(confirm("AWAS: Padam SEMUA data local?")) {
-            localStorage.clear();
-            location.reload();
-        }
-    }
-
-    /* --- ONBOARDING & WEIGHT --- */
-    function saveOnboarding() {
+    window.saveOnboarding = () => {
         const start = document.getElementById('onboardStartWeight').value;
         const goal = document.getElementById('onboardGoalWeight').value;
         if(!start) return alert("Sila isi berat.");
         localStorage.setItem('userGoal', goal);
-        addWeightLog({ weight: parseFloat(start), date: getTodayDate() });
+        
+        // Save initial weight
+        if (currentUser.uid.startsWith('user_sim')) {
+            weightLogs.push({ weight: parseFloat(start), date: getTodayDate() });
+            localStorage.setItem('weightLogs', JSON.stringify(weightLogs));
+        } else {
+            addDoc(collection(db, 'users', currentUser.uid, 'weights'), { weight: parseFloat(start), date: getTodayDate() });
+        }
         showScreen('home');
+    };
+
+    // 6. UI LOGIC & NAVIGATION
+    window.showScreen = (id) => {
+        document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id===id));
+        const isAuth = ['login', 'emailLogin', 'emailSignup', 'onboarding'].includes(id);
+        
+        if (!isAuth) {
+            document.getElementById('mainNav').classList.remove('hidden');
+            document.getElementById('fabBtn').classList.remove('hidden');
+            document.getElementById('userIcon').classList.remove('hidden');
+        } else {
+            document.getElementById('mainNav').classList.add('hidden');
+            document.getElementById('fabBtn').classList.add('hidden');
+            document.getElementById('userIcon').classList.add('hidden');
+        }
+        
+        if(id === 'home') renderHomeStats();
+        if(id === 'weight') renderWeightLogs();
+        if(id === 'analysis') renderMeals();
+    };
+
+    // Event Listeners for Nav Buttons
+    document.querySelectorAll('[data-nav]').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.showScreen(el.dataset.nav);
+        });
+    });
+
+    // 7. DATA HANDLING
+    function subscribeToData(uid) {
+        const mealsRef = collection(db, 'users', uid, 'meals');
+        const qMeals = query(mealsRef, orderBy('date', 'desc'), limit(50));
+        unsubscribeMeals = onSnapshot(qMeals, (snap) => {
+            mealLogs = []; snap.forEach(d => mealLogs.push(d.data()));
+            renderHomeStats();
+            if(document.getElementById('analysis').classList.contains('active')) renderMeals();
+        });
+
+        const wRef = collection(db, 'users', uid, 'weights');
+        const qWeight = query(wRef, orderBy('date', 'desc'), limit(20));
+        unsubscribeWeight = onSnapshot(qWeight, (snap) => {
+            weightLogs = []; snap.forEach(d => weightLogs.push(d.data()));
+            if(document.getElementById('weight').classList.contains('active')) renderWeightLogs();
+        });
+    }
+
+    function renderHomeStats() {
+        const todayLogs = mealLogs.filter(l => l.date === getTodayDate());
+        const sum = (k) => todayLogs.reduce((a, b) => a + (b[k]||0), 0);
+        document.getElementById('calBalance').innerText = sum('calories');
+        document.getElementById('protBalance').innerText = sum('protein');
+        document.getElementById('carbBalance').innerText = sum('carbs');
+        
+        const list = document.getElementById('recentMealsList');
+        list.innerHTML = todayLogs.length ? '' : `<div class="list-item" style="justify-content:center; color:var(--muted);">Tiada rekod hari ini</div>`;
+        let html = '';
+        todayLogs.forEach(m => {
+            html += `<div class="list-item"><div class="item-val">${m.name}</div><div class="item-date">${m.calories} kcal</div></div>`;
+        });
+        if(html) list.innerHTML = html;
     }
 
     function renderWeightLogs() {
@@ -651,27 +532,51 @@
             container.innerHTML += `<div class="list-item"><div class="item-date">${log.date}</div><div class="item-val">${log.weight} kg</div></div>`;
         });
     }
-    document.getElementById('btnSaveWeight').onclick = () => {
-        const w = document.getElementById('inpWeight').value;
-        if (!w) return alert("Isi berat.");
-        addWeightLog({ weight: parseFloat(w), date: document.getElementById('inpDate').value });
-        document.getElementById('inpWeight').value = '';
-        alert("Disimpan!");
-    };
 
-    /* --- CAMERA & AI --- */
-    function triggerCamera() { document.getElementById('cameraInput').click(); }
-    function triggerGallery() { document.getElementById('galleryInput').click(); }
+    function renderMeals() {
+        const container = document.getElementById('mealsContainer');
+        container.innerHTML = '';
+        if (!mealLogs.length) return container.innerHTML = '<div style="text-align:center; color:#999; margin-top:30px;">Tiada rekod.</div>';
 
-    function handleImageUpload(input) {
+        const grouped = {};
+        mealLogs.forEach(i => { if(!grouped[i.date]) grouped[i.date]=[]; grouped[i.date].push(i); });
+
+        Object.keys(grouped).sort((a,b) => new Date(b) - new Date(a)).forEach(date => {
+            let total = 0;
+            grouped[date].forEach(i => {
+                if(activeMealMetric === 'calories') total += i.calories || 0;
+                if(activeMealMetric === 'protein') total += i.protein || 0;
+                if(activeMealMetric === 'carbs') total += i.carbs || 0;
+            });
+            let unit = activeMealMetric === 'calories' ? 'kcal' : 'g';
+            let html = `<div class="meal-day"><h4>${date} — ${total} ${unit}</h4>`;
+            grouped[date].forEach(i => {
+                let val = activeMealMetric === 'calories' ? i.calories : (activeMealMetric === 'protein' ? i.protein : i.carbs);
+                html += `<div class="meal-row"><div>${i.name}</div><div>${val||0} ${unit}</div></div>`;
+            });
+            container.innerHTML += html + '</div>';
+        });
+    }
+
+    // 8. CAMERA & AI
+    window.triggerCamera = () => document.getElementById('cameraInput').click();
+    window.triggerGallery = () => document.getElementById('galleryInput').click();
+    window.resetUpload = () => {
+        document.getElementById('uploadPreview').classList.add('hidden');
+        document.getElementById('uploadPlaceholder').classList.remove('hidden');
+        document.getElementById('aiLoading').classList.add('hidden');
+        window.showScreen('home');
+    }
+
+    window.handleImageUpload = (input) => {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
-                const preview = document.getElementById('uploadPreview');
-                preview.src = e.target.result;
-                preview.classList.remove('hidden');
+                document.getElementById('uploadPreview').src = e.target.result;
+                document.getElementById('uploadPreview').classList.remove('hidden');
                 document.getElementById('uploadPlaceholder').classList.add('hidden');
                 document.getElementById('aiLoading').classList.remove('hidden');
+                
                 const base64Data = e.target.result.split(',')[1];
                 analyzeWithGemini(base64Data);
             }
@@ -705,78 +610,63 @@
     function saveFoodLog(name, cal, prot, carb) {
         document.getElementById('aiLoading').classList.add('hidden');
         if(confirm(`AI Menjumpai:\n${name}\n\nKalori: ${cal} kcal\nSimpan?`)) {
-            addMealLog({ name, calories: cal, protein: prot, carbs: carb, date: getTodayDate() });
-            showScreen('home');
-        } else resetUploadUI();
+            const data = { name, calories: cal, protein: prot, carbs: carb, date: getTodayDate() };
+            if (currentUser.uid.startsWith('user_sim')) {
+                mealLogs.push(data);
+                localStorage.setItem('mealLogs', JSON.stringify(mealLogs));
+                renderHomeStats();
+            } else {
+                addDoc(collection(db, 'users', currentUser.uid, 'meals'), data);
+            }
+            window.showScreen('home');
+        } else window.resetUpload();
     }
 
     function runSimulation() {
         document.getElementById('aiLoading').classList.add('hidden');
-        const foods = [
-            { name: "Nasi Lemak (Simulasi)", calories: 450, protein: 12, carbs: 60 },
-            { name: "Satay Ayam (Simulasi)", calories: 200, protein: 18, carbs: 5 },
-            { name: "Roti Canai (Simulasi)", calories: 300, protein: 6, carbs: 40 }
-        ];
-        const f = foods[Math.floor(Math.random() * foods.length)];
+        const foods = [{ name: "Nasi Lemak (Sim)", calories: 450, protein: 12, carbs: 60 }];
+        const f = foods[0];
+        if(confirm(`(Simulasi)\nMakanan: ${f.name}\nSimpan?`)) {
+            const data = { ...f, date: getTodayDate() };
+            if (currentUser.uid.startsWith('user_sim')) {
+                mealLogs.push(data);
+                localStorage.setItem('mealLogs', JSON.stringify(mealLogs));
+                renderHomeStats();
+            } else {
+                addDoc(collection(db, 'users', currentUser.uid, 'meals'), data);
+            }
+            window.showScreen('home');
+        } else window.resetUpload();
+    }
+
+    // Metric Toggle
+    document.getElementById('metricToggle').addEventListener('change', (e) => { 
+        activeMealMetric = e.target.value; 
+        renderMeals(); 
+    });
+
+    // Weight Save
+    window.saveWeight = () => {
+        const w = document.getElementById('inpWeight').value;
+        if (!w) return alert("Isi berat.");
+        const data = { weight: parseFloat(w), date: document.getElementById('inpDate').value };
         
-        if(confirm(`(Mode Simulasi - Masukkan API Key untuk AI Sebenar)\n\nMakanan: ${f.name}\nKalori: ${f.calories}\n\nSimpan?`)) {
-            addMealLog({ ...f, date: getTodayDate() });
-            showScreen('home');
-        } else resetUploadUI();
+        if (currentUser.uid.startsWith('user_sim')) {
+            weightLogs.push(data);
+            localStorage.setItem('weightLogs', JSON.stringify(weightLogs));
+            renderWeightLogs();
+        } else {
+            addDoc(collection(db, 'users', currentUser.uid, 'weights'), data);
+        }
+        document.getElementById('inpWeight').value = '';
+        alert("Disimpan!");
     }
+    document.getElementById('btnSaveWeight').onclick = window.saveWeight;
 
-    function resetUpload() { showScreen('home'); }
-    function resetUploadUI() {
-        document.getElementById('uploadPreview').classList.add('hidden');
-        document.getElementById('uploadPlaceholder').classList.remove('hidden');
-        document.getElementById('aiLoading').classList.add('hidden');
-        document.getElementById('cameraInput').value = "";
-    }
-
-    /* --- RENDER FUNCTIONS --- */
-    function renderMeals() {
-        const container = document.getElementById('mealsContainer');
-        container.innerHTML = '';
-        if (!mealLogs.length) return container.innerHTML = '<div style="text-align:center; color:#999; margin-top:30px;">Tiada rekod.</div>';
-
-        const grouped = {};
-        mealLogs.forEach(i => { if(!grouped[i.date]) grouped[i.date]=[]; grouped[i.date].push(i); });
-
-        Object.keys(grouped).sort((a,b) => new Date(b) - new Date(a)).forEach(date => {
-            let total = 0;
-            grouped[date].forEach(i => {
-                if(activeMealMetric === 'calories') total += i.calories || 0;
-                if(activeMealMetric === 'protein') total += i.protein || 0;
-                if(activeMealMetric === 'carbs') total += i.carbs || 0;
-            });
-            let unit = activeMealMetric === 'calories' ? 'kcal' : 'g';
-            let html = `<div class="meal-day"><h4>${date} — ${total} ${unit}</h4>`;
-            grouped[date].forEach(i => {
-                let val = activeMealMetric === 'calories' ? i.calories : (activeMealMetric === 'protein' ? i.protein : i.carbs);
-                html += `<div class="meal-row"><div>${i.name}</div><div>${val||0} ${unit}</div></div>`;
-            });
-            container.innerHTML += html + '</div>';
-        });
-    }
-
-    document.getElementById('metricToggle').addEventListener('change', (e) => { activeMealMetric = e.target.value; renderMeals(); });
-
-    function renderHomeStats() {
-        const todayLogs = mealLogs.filter(l => l.date === getTodayDate());
-        const sum = (k) => todayLogs.reduce((a, b) => a + (b[k]||0), 0);
-        document.getElementById('calBalance').innerText = sum('calories');
-        document.getElementById('protBalance').innerText = sum('protein');
-        document.getElementById('carbBalance').innerText = sum('carbs');
-        
-        const list = document.getElementById('recentMealsList');
-        list.innerHTML = todayLogs.length ? '' : `<div class="list-item" style="justify-content:center; color:var(--muted);">Tiada rekod hari ini</div>`;
-        todayLogs.forEach(m => {
-            list.innerHTML += `<div class="list-item"><div class="item-val">${m.name}</div><div class="item-date">${m.calories} kcal</div></div>`;
-        });
-    }
-
+    // Utils
     function getTodayDate() { const d = new Date(); return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0]; }
     document.getElementById('inpDate').value = getTodayDate();
+    window.resetApp = () => { if(confirm("Padam data?")) { localStorage.clear(); location.reload(); } };
 
   </script>
 </body>
