@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>NutriSnap</title>
+  <title>NutriSnap - Cloud Version</title>
   
   <style>
     /* --- CSS UTAMA --- */
@@ -145,7 +145,7 @@
           <div class="divider">ATAU</div>
           
           <button class="secondary" data-nav="emailLogin">Log Masuk dengan E-mel</button>
-          <div style="font-size:12px; margin-top:10px; color:#ccc;">Versi Cloud + Auto Fallback</div>
+          <div style="font-size:12px; margin-top:10px; color:#ccc;">Versi Cloud Sahaja</div>
         </div>
       </section>
 
@@ -203,12 +203,13 @@
           <h2>Analisis Makanan</h2>
           <div class="upload-box">
              <img id="uploadPreview" class="preview-img hidden" src="" alt="Preview">
+             <div id="aiLoading" class="loading-overlay hidden"><div class="spinner"></div><span>Menganalisis AI...</span></div>
              <div id="uploadPlaceholder">
                 <svg width="80" height="80" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm-6 4a6 6 0 1 1 12 0 6 6 0 0 1-12 0zM9 2l-1.83 2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2.17L15 2H9z"/></svg>
              </div>
           </div>
           <p style="color:var(--muted);">Ambil gambar makanan untuk analisis AI.</p>
-          <input type="file" id="cameraInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(this)">
           <input type="file" id="galleryInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
           <button class="primary" onclick="triggerCamera()">📸 Ambil Gambar</button>
           <button class="secondary" onclick="triggerGallery()">📁 Pilih dari Galeri</button>
@@ -216,7 +217,7 @@
         </div>
       </section>
 
-      <!-- 6. ANALYSIS / MEALS -->
+      <!-- 6. ANALYSIS -->
       <section id="analysis" class="screen">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <h3>Diari Makanan</h3>
@@ -227,7 +228,7 @@
         <div id="mealsContainer" style="margin-top:20px;"></div>
       </section>
 
-      <!-- 7. WEIGHT TRACKER -->
+      <!-- 7. WEIGHT -->
       <section id="weight" class="screen">
         <div class="login-card" style="margin-top:0;">
             <h3>Rekod Berat Badan</h3>
@@ -247,7 +248,8 @@
             <p style="color:var(--muted);" id="profileEmail">user@example.com</p>
             <button class="secondary" style="margin-top:20px;">Edit Profil</button>
             <div class="divider">ZON BAHAYA</div>
-            <button class="danger-btn" onclick="window.handleLogout()">Log Keluar</button>
+            <button class="danger-btn" onclick="resetApp()">Padam Semua Data (Reset)</button>
+            <button class="secondary" style="color:var(--danger); border:1px solid var(--danger); background:transparent;" onclick="window.handleLogout()">Log Keluar</button>
         </div>
       </section>
 
@@ -266,186 +268,77 @@
     </nav>
   </div>
 
-  <!-- MODULE SCRIPT (Logic + Firebase) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    // --- KEYS (Pre-filled) ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyC9hya7EGpzu9Qn-bcjcwVpgy-_K7NR47A",
-      authDomain: "nutrisnap-34c6b.firebaseapp.com",
-      projectId: "nutrisnap-34c6b",
-      storageBucket: "nutrisnap-34c6b.firebasestorage.app",
-      messagingSenderId: "427310632230",
-      appId: "1:427310632230:web:78e2943728aec2987ac5e7"
-    };
-
-    // --- STATE ---
-    let app, auth, db;
-    let currentUser = null;
-    let mealLogs = [];
-    let weightLogs = [];
-    let activeMealMetric = 'calories';
-    let unsubscribeMeals = null;
-    let unsubscribeWeight = null;
-    let isFirebaseReady = false;
-    const API_KEY = ""; // Optional Gemini API Key
-
-    // --- INIT & AUTH ---
-    try {
-        app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-        isFirebaseReady = true;
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                // Real Login Success
-                handleLoginSuccess(user);
-            } else {
-                // Check if we are faking it (Offline Mode)
-                const offline = localStorage.getItem('isLoggedIn') === 'true';
-                const userStr = localStorage.getItem('currentUser');
-                if (offline && userStr) {
-                    const u = JSON.parse(userStr);
-                    if (u.uid.startsWith('offline_')) {
-                        handleLoginSuccess(u);
-                        return;
-                    }
-                }
-                showScreen('login');
-            }
-        });
-    } catch (e) {
-        console.warn("Offline Mode forced due to init error");
-        checkOfflineSession();
-    }
-
-    // --- GLOBAL LOGIN FUNCTIONS ---
-    window.handleGoogleLogin = async () => {
-        const btn = document.getElementById('googleBtn');
-        const stat = document.getElementById('loginStatus');
-        btn.innerText = "Sila Tunggu...";
-        stat.innerText = "Sedang menghubungi Google...";
-        
-        try {
-            if (!isFirebaseReady) throw new Error("Firebase unavailable");
-            
-            // Attempt Login
-            const result = await signInWithPopup(auth, new GoogleAuthProvider());
-            
-            // MANUAL FORCE if listener is slow
-            stat.innerText = "Berjaya! Masuk...";
-            handleLoginSuccess(result.user);
-            
-        } catch (error) {
-            console.warn("Login Blocked/Failed:", error.code);
-            
-            // SILENT FALLBACK: If domain blocked, just let them in locally
-            if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/operation-not-allowed') {
-                stat.innerText = "Domain Blocked. Switching to Offline...";
-                forceOfflineLogin();
-            } else {
-                alert("Ralat: " + error.message);
-                btn.innerText = "Masuk dengan Google";
-            }
-        }
-    };
-
-    function forceOfflineLogin() {
-        const mockUser = { uid: "offline_user", displayName: "Pengguna Offline", email: "offline@local", photoURL: null };
-        localStorage.setItem('currentUser', JSON.stringify(mockUser));
-        localStorage.setItem('isLoggedIn', 'true');
-        handleLoginSuccess(mockUser); // Direct call, no reload needed
-    }
-
-    function checkOfflineSession() {
-        if(localStorage.getItem('isLoggedIn') === 'true') {
-            const u = JSON.parse(localStorage.getItem('currentUser') || '{}');
-            handleLoginSuccess(u);
-        } else {
-            showScreen('login');
-        }
-    }
-
-    function handleLoginSuccess(user) {
-        currentUser = user;
-        console.log("Welcome", user.email);
-        
-        // Update UI
-        document.getElementById('profileName').innerText = user.displayName || "Pengguna";
-        document.getElementById('profileEmail').innerText = user.email;
-        if(user.photoURL) document.getElementById('userIcon').innerHTML = `<img src="${user.photoURL}">`;
-        
-        // Load Data
-        if(user.uid.startsWith('offline_')) {
-             mealLogs = JSON.parse(localStorage.getItem('mealLogs') || '[]');
-             weightLogs = JSON.parse(localStorage.getItem('weightLogs') || '[]');
-             renderHomeStats();
-        } else {
-             subscribeToData(user.uid);
-        }
-
-        // NAVIGATION LOGIC (The fix)
-        // If they have a goal, go Home. If not, go Onboarding.
-        if (localStorage.getItem('userGoal')) {
-            showScreen('home');
-        } else {
-            showScreen('onboarding');
-        }
-    }
-
-    // --- OTHER HANDLERS ---
-    window.handleEmailLogin = async () => { /* ... simplified ... */ };
-    window.handleEmailSignup = async () => { /* ... simplified ... */ };
-    window.handleLogout = async () => {
-        if(isFirebaseReady) await signOut(auth).catch(()=>{});
-        localStorage.clear();
-        window.location.reload();
-    };
-
-    // --- DATA LOGIC ---
-    function subscribeToData(uid) {
-        const mealsRef = collection(db, 'users', uid, 'meals');
-        const q = query(mealsRef, orderBy('date', 'desc'), limit(50));
-        unsubscribeMeals = onSnapshot(q, (snap) => {
-            mealLogs = []; snap.forEach(d => mealLogs.push(d.data()));
-            renderHomeStats();
-            if(document.getElementById('analysis').classList.contains('active')) renderMeals();
-        });
-        // (Similar for weights...)
-        const wRef = collection(db, 'users', uid, 'weights');
-        const qw = query(wRef, orderBy('date', 'desc'), limit(20));
-        unsubscribeWeight = onSnapshot(qw, (snap) => {
-             weightLogs = []; snap.forEach(d => weightLogs.push(d.data()));
-             if(document.getElementById('weight').classList.contains('active')) renderWeightLogs();
-        });
-    }
-
-    // --- UI HELPERS ---
-    window.showScreen = showScreen; // Expose to HTML
+  <!-- SINGLE SCRIPT TO RULE THEM ALL -->
+  <script>
+    // --- 1. UI HELPERS (Defined First) ---
     function showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id===id));
+        const isAuth = ['login', 'emailLogin', 'emailSignup', 'onboarding'].includes(id);
         
-        const isAuth = ['login', 'emailLogin', 'emailSignup'].includes(id); // Onboarding shows nav? Maybe not.
-        const hideNav = isAuth || id === 'onboarding';
-
-        const els = [document.getElementById('mainNav'), document.getElementById('fabBtn'), document.getElementById('userIcon')];
-        els.forEach(el => el.classList.toggle('hidden', hideNav));
+        if (!isAuth) {
+            document.getElementById('mainNav').classList.remove('hidden');
+            document.getElementById('fabBtn').classList.remove('hidden');
+            document.getElementById('userIcon').classList.remove('hidden');
+        } else {
+            document.getElementById('mainNav').classList.add('hidden');
+            document.getElementById('fabBtn').classList.add('hidden');
+            document.getElementById('userIcon').classList.add('hidden');
+        }
         
         if(id === 'home') renderHomeStats();
         if(id === 'weight') renderWeightLogs();
         if(id === 'analysis') renderMeals();
     }
 
-    // Events
+    // Attach Listeners immediately
     document.querySelectorAll('[data-nav]').forEach(el => {
         el.addEventListener('click', (e) => { e.preventDefault(); showScreen(el.dataset.nav); });
     });
 
-    // --- RENDERERS ---
+    // --- 2. GLOBAL STATE ---
+    let currentUser = null;
+    let mealLogs = [];
+    let weightLogs = [];
+    let activeMealMetric = 'calories';
+    let unsubscribeMeals = null;
+    let unsubscribeWeight = null;
+    const API_KEY = ""; // PASTE KEY GEMINI (OPTIONAL)
+
+    // --- 3. LOGIN SUCCESS HANDLER (Universal) ---
+    window.handleLoginSuccess = (user) => {
+        currentUser = user;
+        console.log("LOGIN SUCCESS:", user.email);
+        
+        // Update Status Text
+        const statusEl = document.getElementById('loginStatus');
+        if(statusEl) statusEl.innerText = "Berjaya! Mengalih...";
+
+        // Update Profile UI
+        document.getElementById('profileName').innerText = user.displayName || "Pengguna";
+        document.getElementById('profileEmail').innerText = user.email;
+        if(user.photoURL) document.getElementById('userIcon').innerHTML = `<img src="${user.photoURL}">`;
+        else document.getElementById('userIcon').innerText = (user.displayName || "A").charAt(0).toUpperCase();
+
+        // Load Data
+        if (window.subscribeToData) {
+            window.subscribeToData(user.uid);
+        }
+
+        // FORCE REDIRECT
+        setTimeout(() => {
+            if (!localStorage.getItem('userGoal')) showScreen('onboarding');
+            else showScreen('home');
+        }, 500); 
+    }
+
+    window.handleLogoutSuccess = () => {
+        currentUser = null;
+        if(unsubscribeMeals) unsubscribeMeals();
+        if(unsubscribeWeight) unsubscribeWeight();
+        showScreen('login');
+    }
+
+    // --- 4. DATA LOGIC (Functions used by both Online/Offline) ---
     function renderHomeStats() {
         const today = getTodayDate();
         const logs = mealLogs.filter(l => l.date === today);
@@ -459,7 +352,14 @@
         logs.forEach(m => list.innerHTML += `<div class="list-item"><div class="item-val">${m.name}</div><div class="item-date">${m.calories} kcal</div></div>`);
     }
 
-    function renderWeightLogs() { /* ... */ } 
+    function renderWeightLogs() { 
+        const logs = weightLogs.sort((a,b) => new Date(b.date) - new Date(a.date));
+        const container = document.getElementById('weightHistory');
+        container.innerHTML = logs.length ? '' : '<div style="text-align:center; color:#999; padding:20px;">Tiada rekod.</div>';
+        logs.forEach(log => {
+            container.innerHTML += `<div class="list-item"><div class="item-date">${log.date}</div><div class="item-val">${log.weight} kg</div></div>`;
+        });
+    } 
     function renderMeals() { 
         const container = document.getElementById('mealsContainer');
         container.innerHTML = '';
@@ -472,7 +372,7 @@
         });
     }
 
-    // --- UTILS ---
+    // --- 5. UTILS ---
     window.saveOnboarding = () => {
         const val = document.getElementById('onboardGoalWeight').value;
         if(val) { localStorage.setItem('userGoal', val); showScreen('home'); }
@@ -484,8 +384,8 @@
         setTimeout(() => {
             if(confirm("AI Simulasi: Nasi Lemak (450 kcal). Simpan?")) {
                 const data = { name: "Nasi Lemak", calories: 450, protein: 12, carbs: 60, date: getTodayDate() };
-                if(isFirebaseReady && !currentUser.uid.startsWith('offline_')) addDoc(collection(db,'users',currentUser.uid,'meals'), data);
-                else { mealLogs.push(data); localStorage.setItem('mealLogs', JSON.stringify(mealLogs)); }
+                if(window.isFirebaseReady && currentUser) addDoc(collection(db,'users',currentUser.uid,'meals'), data);
+                else { mealLogs.push(data); renderHomeStats(); }
                 showScreen('home');
             }
         }, 500);
@@ -495,6 +395,119 @@
     document.getElementById('inpDate').value = getTodayDate();
     document.getElementById('metricToggle').addEventListener('change', (e) => { activeMealMetric = e.target.value; renderMeals(); });
 
+  </script>
+
+  <!-- FIREBASE MODULE (Runs Last) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // --- KEYS ANDA ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyC9hya7EGpzu9Qn-bcjcwVpgy-_K7NR47A",
+      authDomain: "nutrisnap-34c6b.firebaseapp.com",
+      projectId: "nutrisnap-34c6b",
+      storageBucket: "nutrisnap-34c6b.firebasestorage.app",
+      messagingSenderId: "427310632230",
+      appId: "1:427310632230:web:78e2943728aec2987ac5e7"
+    };
+
+    let app, auth, db;
+    let isFirebaseReady = false;
+
+    // --- INIT FIREBASE ---
+    try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        window.isFirebaseReady = true;
+        console.log("Firebase Connected");
+
+        // LISTENER UTAMA
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.handleLoginSuccess(user);
+            } else {
+                window.handleLogoutSuccess();
+            }
+        });
+
+    } catch (e) {
+        console.error("Firebase Init Failed:", e);
+    }
+
+    // --- EXPORTS TO WINDOW ---
+    window.getCollection = (uid, col) => (isFirebaseReady) ? collection(db, 'users', uid, col) : null;
+    window.fs = { query, orderBy, limit, onSnapshot, addDoc };
+    
+    // --- DATA SUBSCRIPTION ---
+    window.subscribeToData = (uid) => {
+        if (!isFirebaseReady) return;
+        
+        const mealsRef = collection(db, 'users', uid, 'meals');
+        const qMeals = query(mealsRef, orderBy('date', 'desc'), limit(50));
+        onSnapshot(qMeals, (snap) => {
+            const data = []; snap.forEach(d => data.push(d.data()));
+            if(window.updateDataBridge) window.updateDataBridge('meals', data);
+        });
+
+        const wRef = collection(db, 'users', uid, 'weights');
+        const qWeight = query(wRef, orderBy('date', 'desc'), limit(20));
+        onSnapshot(qWeight, (snap) => {
+            const data = []; snap.forEach(d => data.push(d.data()));
+            if(window.updateDataBridge) window.updateDataBridge('weights', data);
+        });
+    }
+
+    // --- LOGIN HANDLERS ---
+    
+    // GOOGLE
+    window.handleGoogleLogin = async () => {
+        const btn = document.getElementById('googleBtn');
+        const stat = document.getElementById('loginStatus');
+        btn.disabled = true;
+        btn.innerText = "Menghubungi Google...";
+        stat.innerText = "Sila tunggu pop-up...";
+
+        try {
+            if (!window.isFirebaseReady) throw new Error("Firebase not ready");
+            
+            await signInWithPopup(auth, new GoogleAuthProvider());
+            
+            stat.innerText = "Berjaya! Mengalih...";
+            
+        } catch (error) {
+            console.error("Login Error:", error);
+            alert("Ralat: " + error.message);
+            btn.innerText = "Masuk dengan Google";
+            btn.disabled = false;
+            stat.innerText = "";
+        }
+    };
+
+    // Other login handlers...
+    window.handleEmailLogin = async () => { /* Logic */ };
+    window.handleEmailSignup = async () => { /* Logic */ };
+    window.handleLogout = async () => {
+        if (window.isFirebaseReady) await signOut(auth).catch(()=>{});
+        window.location.reload();
+    };
+  </script>
+
+  <!-- BRIDGE -->
+  <script>
+    window.updateDataBridge = (type, data) => {
+        if(type === 'meals') {
+            mealLogs = data;
+            renderHomeStats();
+            if(document.getElementById('analysis').classList.contains('active')) renderMeals();
+        }
+        if(type === 'weights') {
+            weightLogs = data;
+            if(document.getElementById('weight').classList.contains('active')) renderWeightLogs();
+        }
+    }
   </script>
 </body>
 </html>
