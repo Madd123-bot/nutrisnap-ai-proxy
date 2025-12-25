@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>NutriSnap</title>
+  <title>NutriSnap - Cloud Version</title>
   
   <style>
     /* --- CSS UTAMA --- */
@@ -143,12 +143,12 @@
           <h1>Selamat Datang</h1>
           <p style="color:#8898aa;">Sila log masuk untuk menyimpan data.</p>
           
-          <button id="googleBtn" class="primary" onclick="attemptGoogleLogin()">
+          <button id="googleBtn" class="primary" onclick="window.handleGoogleLogin()">
              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27c3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10c5.35 0 9.25-3.67 9.25-9.09c0-1.15-.15-1.81-.15-1.81z"/></svg>
              Masuk dengan Google
           </button>
 
-          <button id="fbBtn" class="fb-btn" onclick="attemptFacebookLogin()">
+          <button id="fbBtn" class="fb-btn" onclick="window.handleFacebookLogin()">
              <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z"/></svg>
              Masuk dengan Facebook
           </button>
@@ -158,7 +158,7 @@
           <div class="divider">ATAU</div>
           
           <button class="secondary" data-nav="emailLogin">Log Masuk dengan E-mel</button>
-          <div style="font-size:12px; margin-top:10px; color:#ccc;">Versi Cloud + Fallback</div>
+          <div style="font-size:12px; margin-top:10px; color:#ccc;">Versi Cloud</div>
           
           <!-- EMERGENCY BUTTON -->
           <div style="margin-top:15px; border-top:1px dashed #eee; padding-top:10px;">
@@ -315,7 +315,7 @@
     // --- 3. LOGIN SUCCESS HANDLER ---
     window.handleLoginSuccess = (user) => {
         currentUser = user;
-        console.log("Logged In:", user.email);
+        console.log("LOGIN SUCCESS:", user.email);
         
         const statusEl = document.getElementById('loginStatus');
         if(statusEl) statusEl.innerText = "Berjaya! Mengalih...";
@@ -345,6 +345,8 @@
 
     window.handleLogoutSuccess = () => {
         currentUser = null;
+        if(window.unsubscribeMeals) window.unsubscribeMeals();
+        if(window.unsubscribeWeight) window.unsubscribeWeight();
         showScreen('login');
     }
 
@@ -357,7 +359,7 @@
         };
         localStorage.setItem('currentUser', JSON.stringify(mockUser));
         localStorage.setItem('isLoggedIn', 'true');
-        window.handleLoginSuccess(mockUser);
+        window.handleLoginSuccess(mockUser); // Direct call, no reload needed
     }
 
     // Auto-Login Check (Local)
@@ -446,7 +448,7 @@
     document.getElementById('btnSaveWeight').onclick = window.saveWeight;
   </script>
 
-  <!-- FIREBASE MODULE -->
+  <!-- FIREBASE MODULE (Runs Last) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -497,14 +499,14 @@
         
         const mealsRef = collection(db, 'users', uid, 'meals');
         const qMeals = query(mealsRef, orderBy('date', 'desc'), limit(50));
-        onSnapshot(qMeals, (snap) => {
+        window.unsubscribeMeals = onSnapshot(qMeals, (snap) => {
             const data = []; snap.forEach(d => data.push(d.data()));
             if(window.updateDataBridge) window.updateDataBridge('meals', data);
         });
 
         const wRef = collection(db, 'users', uid, 'weights');
         const qWeight = query(wRef, orderBy('date', 'desc'), limit(20));
-        onSnapshot(qWeight, (snap) => {
+        window.unsubscribeWeight = onSnapshot(qWeight, (snap) => {
             const data = []; snap.forEach(d => data.push(d.data()));
             if(window.updateDataBridge) window.updateDataBridge('weights', data);
         });
@@ -512,32 +514,30 @@
 
     // --- LOGIN HANDLERS ---
     
-    // ATTEMPT GOOGLE LOGIN
-    window.attemptGoogleLogin = async () => {
+    // GOOGLE
+    window.handleGoogleLogin = async () => {
         const btn = document.getElementById('googleBtn');
         const stat = document.getElementById('loginStatus');
         btn.disabled = true;
         btn.innerText = "Menghubungi Google...";
         stat.innerText = "Sila tunggu pop-up...";
 
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 5000));
-
+        // REMOVED TIMEOUT RACE - JUST WAIT
         try {
             if (!window.isFirebaseReady) throw new Error("Firebase not ready");
             
-            // Race: Login vs Timeout
-            await Promise.race([
-                signInWithPopup(auth, new GoogleAuthProvider()),
-                timeoutPromise
-            ]);
+            // Standard Popup
+            const result = await signInWithPopup(auth, new GoogleAuthProvider());
             
+            // Explicitly call success to force move
             stat.innerText = "Berjaya! Mengalih...";
+            window.handleLoginSuccess(result.user);
             
         } catch (error) {
             console.error("Login Error:", error);
             
             // AUTOMATIC FALLBACK
-            if (error.code === 'auth/unauthorized-domain' || error.message === "TIMEOUT" || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/operation-not-allowed') {
+            if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/operation-not-allowed') {
                 stat.innerText = "Domain Blocked. Entering Offline Mode...";
                 setTimeout(() => window.forceOfflineLogin('Google'), 1000);
             } else {
@@ -549,26 +549,23 @@
         }
     };
 
-    // ATTEMPT FACEBOOK LOGIN
-    window.attemptFacebookLogin = async () => {
+    // FACEBOOK
+    window.handleFacebookLogin = async () => {
         const btn = document.getElementById('fbBtn');
         const stat = document.getElementById('loginStatus');
         btn.disabled = true;
         btn.innerText = "Menghubungi FB...";
         stat.innerText = "Sila tunggu pop-up...";
         
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), 5000));
-
         try {
             if (!window.isFirebaseReady) throw new Error("Firebase not ready");
-            await Promise.race([
-                signInWithPopup(auth, new FacebookAuthProvider()),
-                timeoutPromise
-            ]);
+            const result = await signInWithPopup(auth, new FacebookAuthProvider());
+            
             stat.innerText = "Berjaya! Mengalih...";
+            window.handleLoginSuccess(result.user);
         } catch (error) {
             console.error("Login Error:", error);
-            if (error.code === 'auth/unauthorized-domain' || error.message === "TIMEOUT" || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/operation-not-allowed') {
+            if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/operation-not-allowed') {
                 stat.innerText = "Domain Blocked. Entering Offline Mode...";
                 setTimeout(() => window.forceOfflineLogin('Facebook'), 1000);
             } else {
@@ -586,7 +583,8 @@
         if(!email || !pass) return alert("Sila isi info");
         
         try {
-            await signInWithEmailAndPassword(auth, email, pass);
+            const res = await signInWithEmailAndPassword(auth, email, pass);
+            window.handleLoginSuccess(res.user);
         } catch(error) {
              // Fallback
             const users = JSON.parse(localStorage.getItem('simUsers') || '[]');
@@ -610,6 +608,7 @@
         try {
             const res = await createUserWithEmailAndPassword(auth, email, pass);
             await updateProfile(res.user, { displayName: name });
+            window.handleLoginSuccess(res.user);
         } catch(error) {
             // Fallback
             const users = JSON.parse(localStorage.getItem('simUsers') || '[]');
