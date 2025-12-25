@@ -158,7 +158,7 @@
           <div class="divider">ATAU</div>
           
           <button class="secondary" data-nav="emailLogin">Log Masuk dengan E-mel</button>
-          <div style="font-size:12px; margin-top:10px; color:#ccc;">Versi Cloud</div>
+          <div style="font-size:12px; margin-top:10px; color:#ccc;">Versi Cloud + Fallback</div>
           
           <!-- EMERGENCY BUTTON -->
           <div style="margin-top:15px; border-top:1px dashed #eee; padding-top:10px;">
@@ -522,21 +522,19 @@
         btn.innerText = "Menghubungi Google...";
         stat.innerText = "Sila tunggu pop-up...";
 
-        // REMOVED TIMEOUT RACE - JUST WAIT
         try {
             if (!window.isFirebaseReady) throw new Error("Firebase not ready");
             
             // Standard Popup
             const result = await signInWithPopup(auth, new GoogleAuthProvider());
             
-            // Explicitly call success to force move
+            // EXPLICIT CALL to fix "stuck" issue
             stat.innerText = "Berjaya! Mengalih...";
             window.handleLoginSuccess(result.user);
             
         } catch (error) {
             console.error("Login Error:", error);
             
-            // AUTOMATIC FALLBACK
             if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/operation-not-allowed') {
                 stat.innerText = "Domain Blocked. Entering Offline Mode...";
                 setTimeout(() => window.forceOfflineLogin('Google'), 1000);
