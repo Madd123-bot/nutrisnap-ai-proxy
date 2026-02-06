@@ -29,7 +29,7 @@ try{
                     { type:"input_text", text:"Detect Malaysian food. Return ONLY JSON array [{name,calories,protein,carbs}]" },
                     {
                         type:"input_image",
-                        image_url: req.body.image
+                        image_url:{ url: req.body.image }
                     }
                 ]
             }
