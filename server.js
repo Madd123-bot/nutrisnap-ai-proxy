@@ -45,6 +45,26 @@ try{
 
     const data = await ai.json();
 
+console.log("OPENAI RAW:", JSON.stringify(data));
+
+let text = "[]";
+
+try{
+    text = data.output?.[0]?.content?.[0]?.text || "[]";
+}catch{
+    console.log("FORMAT ERROR:", data);
+}
+
+let result = [];
+try{
+    result = JSON.parse(text);
+}catch{
+    console.log("JSON PARSE FAIL:", text);
+}
+
+res.json(result);
+
+
     console.log("OPENAI RAW:", JSON.stringify(data));
 
     let text = "[]";
