@@ -34,7 +34,7 @@ try{
                     content:[
                         { 
   type:"input_text",
-  text:"Return ONLY JSON array of Malaysian food names detected in image. Example: [\"nasi lemak\",\"teh tarik\"]"
+ text:"Detect individual food ingredients in the image. Return ONLY JSON array. Example: [\"rice\",\"egg\",\"cucumber\",\"peanuts\"]"
 }
 ,
                         {
