@@ -34,8 +34,20 @@ try{
                     content:[
                         { 
   type:"input_text",
- text:"Detect individual food ingredients in the image. Return ONLY JSON array. Example: [\"rice\",\"egg\",\"cucumber\",\"peanuts\"]"
+  text:`
+Detect ALL food items in the image.
+
+Return ONLY valid JSON array.
+
+Format:
+[
+ { "name":"food name", "calories":number, "protein":number, "carbs":number }
+]
+
+Estimate nutrition if unsure.
+`
 }
+
 ,
                         {
                         type:"input_image",
