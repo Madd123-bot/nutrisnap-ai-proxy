@@ -45,16 +45,18 @@ try{
 
     const data = await ai.json();
 
-console.log("OPENAI RAW:", JSON.stringify(data));
+console.log("OPENAI RAW:", data);
 
+// ambil text dari Responses API
 let text = "[]";
 
-try{
-    text = data.output?.[0]?.content?.[0]?.text || "[]";
-}catch{
-    console.log("FORMAT ERROR:", data);
+if(data.output_text){
+    text = data.output_text;
+}else if(data.output && data.output[0]?.content){
+    text = data.output[0].content[0].text || "[]";
 }
 
+// parse JSON result
 let result = [];
 try{
     result = JSON.parse(text);
@@ -64,10 +66,8 @@ try{
 
 res.json(result);
 
-
     console.log("OPENAI RAW:", JSON.stringify(data));
 
-    let text = "[]";
 
 // 🔥 Ambil text dari responses API betul
 if(data.output_text){
