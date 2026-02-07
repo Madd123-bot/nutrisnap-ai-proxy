@@ -37,14 +37,18 @@ try{
   text:`
 Detect ALL food items in the image.
 
+Estimate portion size visually:
+small, medium, or large.
+
 Return ONLY valid JSON array.
 
 Format:
 [
- { "name":"food name", "calories":number, "protein":number, "carbs":number }
+ { "name":"food", "portion":"small|medium|large", "calories":number, "protein":number, "carbs":number }
 ]
 
-Estimate nutrition if unsure.
+Estimate nutrition based on portion size.
+No explanation.
 `
 }
 
