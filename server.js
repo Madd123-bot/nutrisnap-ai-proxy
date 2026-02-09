@@ -4,75 +4,55 @@ import fetch from "node-fetch";
 
 const app = express();
 
-app.use(cors({
-    origin:"*",
-    methods:["GET","POST","OPTIONS"],
-    allowedHeaders:["Content-Type","Authorization"]
-}));
-
-app.use(express.json({limit:"10mb"}));
-app.options("*", cors());
+app.use(cors());
+app.use(express.json({ limit: "10mb" }));
 
 app.get("/", (req,res)=>{
-    res.send("AI Proxy Alive 🔥");
+    res.send("AI Proxy Gemini Alive 🔥");
 });
 
 app.post("/ai", async (req,res)=>{
 try{
 
-    const ai = await fetch("https://api.openai.com/v1/responses",{
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json",
-            "Authorization":"Bearer " + process.env.OPENAI_API_KEY
-        },
-        body: JSON.stringify({
-            model:"gpt-4.1-mini",
-            input:[
-                {
-                    role:"user",
-                    content:[
-                        { 
-  type:"input_text",
-  text:`
-Detect ALL food items in the image.
+    const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-Estimate portion size visually:
-small, medium, or large.
-
-Return ONLY valid JSON array.
-
-Format:
-[
- { "name":"food", "portion":"small|medium|large", "calories":number, "protein":number, "carbs":number }
-]
-
-Estimate nutrition based on portion size.
-No explanation.
-`
-}
-
-,
-                        {
-                        type:"input_image",
-                        image_url: req.body.image
-                        }
-
-                    ]
-                }
-            ]
-        })
-    });
+    const ai = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + GEMINI_KEY,
+        {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body: JSON.stringify({
+                contents:[
+                    {
+                        parts:[
+                            {
+                                text:"Detect all food ingredients in this image. Return ONLY JSON array [{name,calories,protein,carbs}]"
+                            },
+                            {
+                                inlineData:{
+                                    mimeType:"image/jpeg",
+                                    data:req.body.image.split(",")[1] // buang base64 header
+                                }
+                            }
+                        ]
+                    }
+                ]
+            })
+        }
+    );
 
     const data = await ai.json();
-    console.log("OPENAI RAW:", data);
+
+    console.log("GEMINI RAW:", JSON.stringify(data));
 
     let text = "[]";
 
-    if(data.output_text){
-        text = data.output_text;
-    }else if(data.output && data.output[0]?.content){
-        text = data.output[0].content[0].text || "[]";
+    try{
+        text = data.candidates[0].content.parts[0].text || "[]";
+    }catch{
+        console.log("FORMAT ERROR");
     }
 
     let result = [];
@@ -85,7 +65,7 @@ No explanation.
     res.json(result);
 
 }catch(e){
-    console.log("SERVER ERROR:", e);
+    console.log("SERVER ERROR:",e);
     res.status(500).json({error:e.message});
 }
 });
@@ -93,5 +73,5 @@ No explanation.
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, ()=>{
-    console.log("AI Proxy Running on " + PORT);
+    console.log("Gemini Proxy Running on " + PORT);
 });
