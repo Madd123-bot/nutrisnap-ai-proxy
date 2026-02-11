@@ -79,7 +79,10 @@ app.post("/ai", async (req,res)=>{
           "Authorization":"Bearer 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",
           "Content-Type":"application/json"
         },
-        body: base64
+        body: JSON.stringify({
+        inputs: base64
+        })
+
       }
     );
 
